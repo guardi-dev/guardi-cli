@@ -6,7 +6,7 @@ pub struct ValidationResult {
 }
 
 pub fn validate_response(expected_type: &TypeDefinition, actual_json: &serde_json::Value) -> ValidationResult {
-  let mut errors = Vec::new();
+  let errors = Vec::new();
   
   // Логика сверки полей:
   // 1. Проверить, что в JSON есть все поля из TypeDefinition
