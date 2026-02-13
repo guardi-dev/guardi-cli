@@ -8,9 +8,16 @@ use trust_dns_proto::op::{Message, MessageType, ResponseCode};
 use trust_dns_proto::rr::{Record, RData};
 use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
 use trust_dns_resolver::TokioAsyncResolver;
+use std::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // update /etc/nsswitch.conf
+    let nsswitch_path = "/etc/nsswitch.conf";
+    let nss_content = fs::read_to_string(nsswitch_path).unwrap_or_default();
+    let updated_nss = nss_content.replace("files dns", "dns files");
+    fs::write(nsswitch_path, updated_nss).ok();
+
     // Парсим аргументы: guardi <cmd> --allow domain1,domain2
     let args: Vec<String> = env::args().collect();
     let allow_idx = args.iter().position(|r| r == "--allow")

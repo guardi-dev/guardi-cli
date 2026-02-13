@@ -27,5 +27,7 @@ Also this DNS can be directly runned inside production container
 # dev
 Change resolve.conf, then `cargo run`
 
-`echo nameserver 127.0.0.1 > /etc/resolv.conf`
-`echo nameserver 192.168.65.7 > /etc/resolv.conf`
+```
+echo nameserver 127.0.0.1 > /etc/resolv.conf
+echo nameserver 192.168.65.7 > /etc/resolv.conf
+```
