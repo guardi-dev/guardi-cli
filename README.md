@@ -24,7 +24,27 @@ Also this DNS can be directly runned inside production container
 🔴 BLOCKED: google.com
 ```
 
-# dev
+# example Dockerfile
+```
+FROM ubuntu:resolute
+WORKDIR /app
+RUN apt update && apt install curl -y
+RUN curl https://github.com/guardi-dev/guardi-cli/releases/download/v0.0.1/guardi-cli-linux-amd64.tar.gz -LO
+RUN tar -xzf guardi-cli-linux-amd64.tar.gz
+CMD ./guardi-cli curl http://google.com --allow any.other.com
+```
+
+# example docker-compose.yml
+```
+guardi-cli-test:
+  build: 
+    context: .
+    dockerfile: ./tmp/Dockerfile.guardi-cli
+  dns:
+    - 127.0.0.1
+```
+
+# development
 Change resolve.conf, then `cargo run`
 
 ```
