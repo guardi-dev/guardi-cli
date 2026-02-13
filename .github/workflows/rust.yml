@@ -1,0 +1,43 @@
+name: Release Guardi
+
+on:
+  push:
+    tags:
+      - 'v*' # Срабатывает на теги типа v1.0.0, v0.1.2
+
+jobs:
+  build-release:
+    name: Build for Linux
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install MUSL tools
+        run: sudo apt-get install -y musl-tools
+
+      - name: Build Binary
+        # Используем MUSL для статической линковки (бинарник запустится везде)
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Prepare Artifact
+        run: |
+          cd target/x86_64-unknown-linux-musl/release
+          strip guardi # Уменьшаем размер бинарника
+          tar -czvf guardi-linux-amd64.tar.gz guardi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/x86_64-unknown-linux-musl/release/guardi-linux-amd64.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
