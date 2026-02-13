@@ -3,55 +3,66 @@ use std::process::{Command};
 use std::time::{Duration, Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Настройка цели (curl)
     let mut cmd = Command::new("curl");
     cmd.args(["-X", "POST", "-d", "password=123", "http://httpbin.org/post"]);
 
-    // 2. Инициализация сниффера
     let device = Device::lookup()?.expect("No device found");
     let mut cap = Capture::from_device(device)?
         .immediate_mode(true)
-        .timeout(100) // Важно для неблокирующего чтения
+        .timeout(200) // 200мс ожидания, чтобы цикл не блокировался навсегда
         .open()?;
 
-    // 3. Запуск процесса
     let mut child = cmd.spawn()?;
     let target_pid = child.id();
-    println!("🛡️  Guardi запущен. Мониторинг PID: {}", target_pid);
+    println!("🛡️ Guardi мониторит PID: {}", target_pid);
 
-    let mut last_activity = Instant::now();
-    let grace_period = Duration::from_secs(2); // Даем время после завершения
+    let mut process_finished = false;
+    let mut finish_time: Option<Instant> = None;
+    let grace_period = Duration::from_secs(2); // Ждем 2 сек после выхода процесса для "хвостов"
 
-    // 4. Основной цикл захвата
     loop {
-        // Проверяем пакеты
-        if let Ok(packet) = cap.next_packet() {
-            if let Some(payload) = packet.data.get(0..) {
-                // Извлекаем порты (простейший парсинг TCP заголовка)
-                // Байты 34-35 — исходный порт, 36-37 — порт назначения (для Ethernet + IPv4)
+        // 1. Пытаемся поймать пакет
+        match cap.next_packet() {
+            Ok(packet) => {
+                let payload = packet.data;
                 if payload.len() > 38 {
                     let src_port = u16::from_be_bytes([payload[34], payload[35]]);
-                    
-                    // Проверяем, владеет ли наш PID этим портом
                     if is_port_owned_by_pid(target_pid, src_port) {
-                        println!("🎯 Захвачен пакет от нашего процесса (Port: {})", src_port);
+                        println!("🎯 Пакет от PID {}: порт {}", target_pid, src_port);
                         parse_http_payload(payload);
-                        last_activity = Instant::now();
                     }
                 }
             }
+            Err(pcap::Error::TimeoutExpired) => {
+                // Это нормально, пакетов просто нет в эти 200мс
+            }
+            Err(e) => {
+                eprintln!("Ошибка pcap: {:?}", e);
+                break;
+            }
         }
 
-        // Проверяем, жив ли процесс
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                if last_activity.elapsed() > grace_period {
-                    println!("✅ Процесс завершен ({}). Тишина в эфире. Выходим.", status);
+        // 2. Проверяем состояние процесса
+        if !process_finished {
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    println!("🏁 Процесс {} завершился с кодом {}. Собираю остатки данных...", target_pid, status);
+                    process_finished = true;
+                    finish_time = Some(Instant::now());
+                }
+                Ok(None) => (), // Процесс еще живет
+                Err(e) => eprintln!("Ошибка проверки процесса: {}", e),
+            }
+        }
+
+        // 3. Условие выхода: процесс завершен + прошло время "тишины"
+        if process_finished {
+            if let Some(time) = finish_time {
+                if time.elapsed() > grace_period {
+                    println!("✅ Все данные собраны. Завершение Guardi.");
                     break;
                 }
             }
-            Ok(None) => (), // Еще работает
-            Err(e) => println!("Ошибка ожидания: {}", e),
         }
     }
 
