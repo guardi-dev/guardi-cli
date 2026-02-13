@@ -4,10 +4,11 @@ Why? Firstly we should be sure that AI write exactly what we need without any ex
 
 This library provide development utility for understand what exactly doing AI written service.
 
-In main case we need e2e tests, then we need guardi DNS
+In main case we need e2e tests, then we need guardi DNS.
+
 We strictly check that service use only allowed hosts and block other.
 
-Also this DNS can be directly runned inside production container
+Also this DNS can be directly runned inside production container.
 
 # examples
 `guardi-cli curl http://google.com --allow google.com`
