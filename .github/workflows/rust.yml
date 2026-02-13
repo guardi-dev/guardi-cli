@@ -29,13 +29,13 @@ jobs:
       - name: Prepare Artifact
         run: |
           cd target/x86_64-unknown-linux-musl/release
-          strip guardi # Уменьшаем размер бинарника
-          tar -czvf guardi-linux-amd64.tar.gz guardi
+          strip guardi-cli # Уменьшаем размер бинарника
+          tar -czvf guardi-cli-linux-amd64.tar.gz guardi-cli
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/x86_64-unknown-linux-musl/release/guardi-linux-amd64.tar.gz
+          files: target/x86_64-unknown-linux-musl/release/guardi-cli-linux-amd64.tar.gz
           draft: false
           prerelease: false
           generate_release_notes: true
